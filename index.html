@@ -507,7 +507,7 @@ function move(){const al=parseFloat($('alpha').value),g=cur.g;const dn=Math.max(
 
 function next(){if(phase===0)startSCF();else if(phase===1)subStep();else if(phase===2)forces();else if(phase===3){if(cur.F<0.02)reset();else move();}}
 
-function fit(cv){const w=cv.clientWidth,h=parseInt(cv.getAttribute('height'));const r=window.devicePixelRatio||1;
+function fit(cv){if(!cv.dataset.h)cv.dataset.h=cv.getAttribute('height');const w=cv.clientWidth,h=+cv.dataset.h; const r=window.devicePixelRatio||1;
   cv.width=w*r;cv.height=h*r;cv.style.height=h+'px';const x=cv.getContext('2d');x.setTransform(r,0,0,r,0,0);return [x,w,h];}
 function arrow(c,x,y,len,col,w){if(Math.abs(len)<2)return;const s=Math.sign(len);c.strokeStyle=col;c.fillStyle=col;c.lineWidth=w;
   c.beginPath();c.moveTo(x,y);c.lineTo(x+len-6*s,y);c.stroke();c.beginPath();c.moveTo(x+len,y);c.lineTo(x+len-9*s,y-5);c.lineTo(x+len-9*s,y+5);c.closePath();c.fill();}
