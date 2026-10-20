@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VASP krok za krokem</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: jeden sloupec; nahoře přepínač Animace / Teorie. Animace: fáze, molekula, graf podél vazby, vysvětlení, výpis. Teorie: dlouhý text po krocích. */
+:root{
+  --bg:#f5f6f8;--panel:#ffffff;--fg:#1b2130;--muted:#5c6475;--line:#dce0e7;--term:#eef0f4;--ghost:#b6bbc7;
+  --accent:#3559c7;--cloud:#6b5fd2;--nucleus:#1b2130;--pot:#c9562b;--orb:#178560;--pull:#3a7fd5;--repel:#c9562b;--force:#178560;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11141b;--panel:#1a1f28;--fg:#e5e8ee;--muted:#98a0b1;--line:#2b3240;--term:#151920;--ghost:#4b5364;
+  --accent:#7f9df1;--cloud:#a197f3;--nucleus:#e5e8ee;--pot:#f0905f;--orb:#4cc597;--pull:#6aa8f0;--repel:#f0905f;--force:#4cc597;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11141b;--panel:#1a1f28;--fg:#e5e8ee;--muted:#98a0b1;--line:#2b3240;--term:#151920;--ghost:#4b5364;
+  --accent:#7f9df1;--cloud:#a197f3;--nucleus:#e5e8ee;--pot:#f0905f;--orb:#4cc597;--pull:#6aa8f0;--repel:#f0905f;--force:#4cc597;color-scheme:dark}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.view{display:flex;flex-direction:column;gap:14px}
+h1{font-size:22px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:16px;font-weight:500;margin:0 0 6px}
+p{margin:0 0 8px}p:last-child{margin-bottom:0}
+.note{font-size:13px;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.lab{font-size:12px;color:var(--muted);letter-spacing:.03em}
+.val{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:3px;background:var(--panel)}
+.tabs button{border:0;background:transparent;padding:6px 14px;border-radius:7px;color:var(--muted)}
+.tabs button.on{background:var(--accent);color:var(--panel)}
+.stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.stage{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;line-height:1.35;color:var(--muted);background:var(--panel)}
+.stage b{display:block;font-weight:500;font-size:13px}
+.stage.on{border-color:var(--accent);color:var(--fg);box-shadow:inset 0 0 0 1px var(--accent)}
+.subs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin-bottom:8px}
+.sub{font-size:11px;text-align:center;border-radius:6px;padding:3px 2px;background:var(--term);color:var(--muted)}
+.sub.on{background:var(--accent);color:var(--panel)}
+@media (max-width:460px){.stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
+button{font:500 14px var(--sans);padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button.link{border:0;background:transparent;color:var(--accent);padding:4px 0;font-size:13px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+canvas{width:100%;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:6px;color:var(--muted)}
+.sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.f{font-family:var(--mono);font-size:13px;background:var(--term);border-radius:6px;padding:8px 10px;margin:6px 0 10px;overflow-x:auto;white-space:nowrap;line-height:1.7}
+pre{margin:0;background:var(--term);border-radius:8px;padding:10px 12px;font:12px/1.55 var(--mono);overflow-x:auto;max-height:260px;overflow-y:auto;color:var(--fg)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-weight:400;font-family:var(--mono)}
+th{font-family:var(--sans);color:var(--muted);font-size:12px}
+th:first-child,td:first-child{text-align:left}
+.ok{color:var(--force)}
+.th{max-width:70ch}
+.th h2{font-size:20px;margin:30px 0 10px;text-wrap:balance}
+.th h2:first-child{margin-top:0}
+.th h3{font-size:15px;font-weight:500;margin:16px 0 4px}
+.th p,.th li{line-height:1.7}
+.th ul,.th ol{margin:0 0 10px;padding-left:1.3em}
+.th li{margin-bottom:4px}
+.th .io{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;background:var(--term);border-radius:8px;padding:10px 12px;margin:8px 0 12px;font-size:14px}
+.th .io b{font-weight:500;color:var(--muted);font-size:12px;letter-spacing:.03em;padding-top:2px}
+.th .map{max-height:none;margin:8px 0 12px}
+.th table td,.th table th{font-family:var(--sans);text-align:left;vertical-align:top}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc button{font-size:13px;padding:5px 10px}
+.back{position:sticky;bottom:12px;align-self:flex-end}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>Co dělá VASP při relaxaci</h1>
+    <div class="tabs" role="tablist">
+      <button id="tabA" class="on" role="tab">Animace</button>
+      <button id="tabT" role="tab">Teorie</button>
+    </div>
+  </div>
+
+  <!-- ================= ANIMACE ================= -->
+  <div class="view" id="viewA">
+    <p class="note">Molekula H₂ v krabici 10 Å. Vnější smyčka posouvá jádra, vnitřní smyčka (SCF) hledá elektronový oblak. SCF můžeš procházet po krocích a–e. Podrobné vysvětlení je v záložce Teorie.</p>
+
+    <div class="stages">
+      <div class="stage" data-s="0"><b>1. Polohy jader</b>jádra zmražena</div>
+      <div class="stage" data-s="1"><b>2. SCF smyčka</b>hledání oblaku</div>
+      <div class="stage" data-s="2"><b>3. Síly</b>z oblaku</div>
+      <div class="stage" data-s="3"><b>4. Posun jader</b>další iontový krok</div>
+    </div>
+
+    <div class="panel">
+      <canvas id="mol" height="110"></canvas>
+      <div class="row" style="margin-top:4px">
+        <span><span class="lab">Iontový krok </span><span class="val" id="ion">1</span></span>
+        <span><span class="lab">SCF iterace </span><span class="val" id="scfN">–</span></span>
+        <span><span class="lab">Vzdálenost jader </span><span class="val" id="dNow">1.100 Å</span></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="subs" id="subs">
+        <div class="sub">a) potenciál</div><div class="sub">b) orbitaly</div><div class="sub">c) hustota</div><div class="sub">d) míchání</div><div class="sub">e) energie</div>
+      </div>
+      <canvas id="prof" height="210"></canvas>
+      <div class="legend" id="legend"></div>
+      <div class="row" id="pwRow" style="margin-top:8px" hidden>
+        <label class="row" style="gap:8px;flex:1"><span class="lab">Počet rovinných vln (jako ENCUT)</span>
+          <input type="range" id="npw" min="1" max="30" step="1" value="12" style="flex:1;min-width:120px">
+          <span class="val" id="npwO">12</span></label>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="next">Spusť SCF smyčku</button>
+      <button id="ff">Dokonči SCF</button>
+      <button id="reset">Začít znovu</button>
+    </div>
+
+    <div class="panel">
+      <div id="explain"></div>
+      <button class="link" id="more">Podrobně v teorii →</button>
+    </div>
+
+    <div class="row">
+      <label class="row" style="gap:8px"><span class="lab">Velikost kroku jader</span>
+        <input type="range" id="alpha" min="0.005" max="0.06" step="0.005" value="0.015" style="width:120px">
+        <span class="val" id="aOut">0.015</span></label>
+    </div>
+
+    <div class="panel">
+      <h2>Výpis</h2>
+      <pre id="log"></pre>
+    </div>
+
+    <div class="panel tbl">
+      <table><thead><tr><th>Krok</th><th>d (Å)</th><th>E (eV)</th><th>SCF iterací</th><th>|F| (eV/Å)</th></tr></thead><tbody id="hist"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ================= TEORIE ================= -->
+  <div class="view" id="viewT" hidden>
+    <div class="panel th">
+      <p>Celý postup na molekule H₂, v pořadí, ve kterém postupuje VASP. U každého kroku je napsáno, <b>co máš</b>, <b>co s tím uděláš</b> a <b>co ti vyjde</b>.</p>
+      <div class="toc" id="toc">
+        <button data-go="k0">0. Co chceme</button>
+        <button data-go="mapa">Mapa smyček</button>
+        <button data-go="k1">1. Vstupy</button>
+        <button data-go="k2">2. Potenciál jader</button>
+        <button data-go="k3">3. Odhad oblaku</button>
+        <button data-go="k4">4. Co elektron cítí</button>
+        <button data-go="k5">5. Orbitaly</button>
+        <button data-go="k6">6. Nový oblak</button>
+        <button data-go="k7">7. Míchání</button>
+        <button data-go="k8">8. Energie</button>
+        <button data-go="k9">9. Síly</button>
+        <button data-go="k10">10. Posun jader</button>
+        <button data-go="prehled">Přehled</button>
+        <button data-go="zjedn">Co je zjednodušené</button>
+      </div>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k0">0. Co vlastně chceme</h2>
+      <p>Máme dvě jádra vodíku (každé má náboj +1) a dva elektrony (každý −1). Chceme vědět dvě věci:</p>
+      <ol>
+        <li><b>energii</b> celé soustavy pro dané polohy jader,</li>
+        <li><b>síly</b> na jádra, abychom věděli, kam se chtějí pohnout.</li>
+      </ol>
+      <p>Energie se skládá ze čtyř částí, které znáš z fyziky:</p>
+      <ul>
+        <li><b>pohyb elektronů</b> (kinetická energie),</li>
+        <li><b>elektrony přitahované k jádrům</b> (Coulomb, + a −),</li>
+        <li><b>elektrony odpuzující se navzájem</b> (Coulomb, − a −),</li>
+        <li><b>jádra odpuzující se navzájem</b> (Coulomb, + a +).</li>
+      </ul>
+      <h3>Kde je problém</h3>
+      <p>Jádra jsou asi dvoutisíckrát těžší než elektrony a pohybují se mnohem pomaleji. Při výpočtu elektronů je proto můžeme brát jako <b>nehybná</b>: zmrazíme je a jejich polohy jsou jen parametry (Bornova-Oppenheimerova aproximace).</p>
+      <p>Elektrony se ale navzájem odpuzují. Kde je jeden, závisí na tom, kde je druhý, a naopak. Sledovat každý elektron zvlášť se všemi vzájemnými vlivy je pro víc než pár elektronů nepočitatelné: vlnová funkce N elektronů závisí na 3N souřadnicích najednou.</p>
+      <h3>Nápad DFT</h3>
+      <p>Nesledovat jednotlivé elektrony, ale popsat je jako <b>rozmazaný oblak záporného náboje</b>, tedy <b>elektronovou hustotu n(r)</b>. Ta říká, kolik elektronů je v daném místě, a je to funkce jen tří souřadnic, ať je elektronů kolik chce.</p>
+      <p>Každý elektron pak cítí tři věci: <b>jádra</b>, <b>průměrný oblak</b> elektronů a malou <b>kvantovou opravu</b>. Že hustota na popis stačí, zaručují Hohenbergovy-Kohnovy teorémy. Pro pochopení postupu je ale potřebovat nebudeš.</p>
+      <h3 id="mapa">Mapa smyček</h3>
+      <p>VASP má dvě smyčky v sobě. Vnější posouvá jádra, vnitřní (SCF) hledá elektronový oblak pro zmražená jádra.</p>
+<pre class="map">VNĚJŠÍ SMYČKA (jádra se hýbou)
+│
+├─ 1. Vstupy (POSCAR, POTCAR, INCAR)
+├─ 2. Polohy jader ──► potenciál jader
+├─ 3. První odhad oblaku
+│
+├─ VNITŘNÍ SMYČKA (SCF, jádra stojí)
+│    4. oblak + jádra ──► potenciál, který cítí elektron
+│    5. potenciál ──► orbitaly a jejich energie
+│    6. orbitaly ──► nový oblak
+│    7. starý + nový oblak ──► smíchaný oblak
+│    8. oblak ──► energie, mění se ještě?
+│         ano: zpět na 4
+│         ne:  konec SCF ──► energie a správný oblak
+│
+├─ 9. oblak + jádra ──► síly
+└─ 10. síly ──► posun jader ──► zpět na 2
+        (konec, když jsou všechny síly téměř nulové)</pre>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k1">Krok 1: Vstupy</h2>
+      <div class="io"><b>MÁŠ</b><span>soubory, které VASPu dáš</span><b>VYJDE</b><span>kde jsou jádra, jaké jsou to prvky a kolik je elektronů</span></div>
+      <ul>
+        <li><b>POSCAR:</b> kde jsou jádra. Pro H₂ dvě jádra vzdálená třeba 1,10 Å uprostřed krabice 10 × 10 × 10 Å. Krabice je potřeba, protože VASP počítá vždy periodicky: krabice se v prostoru opakuje. Pro molekulu se dělá dost velká, aby se kopie molekuly navzájem necítily.</li>
+        <li><b>POTCAR:</b> jaký je to prvek. Pro H náboj jádra +1 a 1 elektron na atom. U těžších prvků se počítají jen <b>valenční</b> elektrony: vnitřní elektrony se zamrazí dohromady s jádrem do tzv. <b>pseudopotenciálu</b>. Kyslík má proto ve VASPu 6 elektronů, ne 8. V POTCARu je také <b>hotová hustota samostatného atomu</b>, která se hodí v kroku 3.</li>
+        <li><b>INCAR:</b> nastavení, například přesnost (ENCUT, EDIFF), funkcionál nebo typ výpočtu.</li>
+        <li><b>KPOINTS:</b> u krystalů, jak jemně se vzorkují vlny mezi sousedními buňkami. Pro molekulu v krabici stačí jeden bod.</li>
+      </ul>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k2">Krok 2: Potenciál jader</h2>
+      <div class="io"><b>MÁŠ</b><span>polohy jader R₁ a R₂</span><b>VYJDE</b><span>mapa potenciálu jader přes celou krabici</span><b>KAM</b><span>do kroku 4, a dokud se jádra nehnou, už se nemění</span></div>
+      <p>Spočítáš, jakou potenciální energii by měl elektron v každém bodě prostoru kvůli přitahování k jádrům. Je to obyčejný Coulomb jako u atomu vodíku, jen se dvěma jádry:</p>
+      <div class="f">V_jádra(r) = − 1/|r − R₁| − 1/|r − R₂|</div>
+      <p class="note">Všechny vzorce jsou v atomových jednotkách, aby nebylo nutné psát e²/4πε₀ a podobné konstanty.</p>
+      <p>Dosadíš polohy jader a pro každý bod r dostaneš číslo. Výsledkem je „krajina“ se dvěma hlubokými jámami v místech jader. Elektron by nejraději spadl do nich.</p>
+      <p>VASP tu místo holého −1/r používá pseudopotenciál z POTCARu, který je u jádra uhlazený. Pro pochopení postupu je to ale jedno.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k3">Krok 3: První odhad elektronového oblaku</h2>
+      <div class="io"><b>MÁŠ</b><span>hustoty samostatných atomů z POTCARu</span><b>VYJDE</b><span>n_vstup(r), první odhad oblaku</span><b>KAM</b><span>do kroku 4, tady začíná SCF smyčka</span></div>
+      <p><b>Proč odhad potřebuješ:</b> abys mohl spočítat, jak elektrony odpuzuje oblak elektronů, musíš vědět, kde ten oblak je. To ale zatím nevíš, právě to se teprve počítá. Proto se začne odhadem.</p>
+      <p><b>Co uděláš:</b> vezmeš hustotu samostatného atomu H, položíš jednu kolem každého jádra a sečteš je. Vyjdou dva kulaté oblaky kolem jader a mezi nimi skoro nic, jako by atomy o sobě nevěděly a vazba ještě nebyla.</p>
+      <p>Odkud se startovní oblak bere ve VASPu:</p>
+      <ul>
+        <li><b>první iontový krok:</b> součet atomových hustot z POTCARu (výchozí ICHARG = 2),</li>
+        <li><b>další iontové kroky:</b> oblak z minulého kroku, posunutý s jádry. Ten je už skoro správně, a proto další SCF potřebuje méně obrátek,</li>
+        <li><b>pokračování starého výpočtu:</b> oblak načtený z CHGCARu (ICHARG = 1).</li>
+      </ul>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k4">Krok 4 (SCF a): Co elektron cítí</h2>
+      <div class="io"><b>MÁŠ</b><span>potenciál jader (krok 2) a oblak n_vstup (krok 3 nebo minulá obrátka)</span><b>VYJDE</b><span>V_eff, potenciál, který cítí jeden elektron</span><b>KAM</b><span>do kroku 5</span></div>
+      <p>Sečteš tři potenciály:</p>
+      <h3>1. Přitahování k jádrům, V_jádra</h3>
+      <p>Hotové z kroku 2.</p>
+      <h3>2. Odpuzování od oblaku elektronů, V_H (Hartree)</h3>
+      <p>Čistá elektrostatika. Oblak je rozložený záporný náboj, a ten vytváří potenciál stejně jako nabitá koule nebo jakékoli jiné rozložení náboje. Každý kousek oblaku přispěje Coulombem a všechno sečteš:</p>
+      <div class="f">V_H(r) = ∫ n(r′) / |r − r′| dr′</div>
+      <p>Dosazuješ hustotu n_vstup. Kde je oblak hustý, tam je odpuzování velké. Je to totéž jako Poissonova rovnice z elektrostatiky (∇²V_H = −4πn). VASP ji řeší pomocí Fourierovy transformace, kde se z ní stane obyčejné dělení.</p>
+      <h3>3. Kvantová oprava, V_xc (výměna a korelace)</h3>
+      <p>Průměrný oblak úplně nevystihuje, jak se elektrony chovají. Elektrony se navzájem „vyhýbají“: elektrony se stejným spinem kvůli Pauliho principu a všechny kvůli odpuzování. Skutečné odpuzování je proto o něco slabší, než říká V_H.</p>
+      <p>Tahle oprava se bere z <b>přibližného vzorce, funkcionálu</b>. Nejjednodušší LDA bere jen hodnotu hustoty v daném bodě:</p>
+      <div class="f">V_xc ≈ −(konstanta) · n(r)^(1/3)</div>
+      <p>Lepší funkcionály jako PBE (GGA = PE v INCARu) berou i to, jak rychle se hustota mění (gradient). Opět tedy dosazuješ hustotu. Celá přesnost DFT stojí na tom, jak dobrý tenhle vzorec je, protože je to jediná část, kterou neznáme přesně.</p>
+      <h3>Součet</h3>
+      <div class="f">V_eff(r) = V_jádra(r) + V_H(r) + V_xc(r)</div>
+      <p>Jámy u jader jsou pořád, ale <b>mělčí</b>, protože odpuzování oblaku část přitahování vyruší.</p>
+      <h3>Odpuzuje elektron i sám sebe?</h3>
+      <p>Ano, trochu. V_H se počítá z <b>celého</b> oblaku, tedy z obou elektronů, včetně toho, pro který zrovna potenciál počítáš. Elektron by tak odpuzoval sám sebe, což fyzikálně nedává smysl. Tuhle chybu má vyrušit V_xc. V přesné teorii by ji vyrušil úplně, přibližné funkcionály (LDA, PBE) jen zčásti. Tomu se říká <b>chyba samointerakce</b>. Kvůli ní existují vylepšení jako DFT+U nebo hybridní funkcionály, které se používají hlavně u přechodných kovů.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k5">Krok 5 (SCF b): Jak se elektron v tom potenciálu chová</h2>
+      <div class="io"><b>MÁŠ</b><span>V_eff z kroku 4</span><b>VYJDE</b><span>orbitaly ψ₁, ψ₂, … a jejich energie ε₁ &lt; ε₂ &lt; …</span><b>KAM</b><span>do kroku 6</span></div>
+      <p>Vyřešíš <b>Schrödingerovu rovnici pro jeden elektron</b> v tomhle potenciálu. Je to stejná úloha jako „částice v potenciálové jámě“ nebo atom vodíku z kvantové mechaniky, jen s jiným potenciálem:</p>
+      <div class="f">[ −½∇² + V_eff(r) ] ψ(r) = ε ψ(r)</div>
+      <p>První člen je kinetická energie, druhý potenciální. Dosadíš V_eff a hledáš funkce ψ, pro které rovnice platí. Říká se jí <b>Kohn-Shamova rovnice</b>.</p>
+      <p>Výsledkem je sada <b>orbitalů</b>, stavů, ve kterých elektron může být, a jejich <b>energie</b>. Pro H₂ je nejnižší vazebný orbital, rozprostřený přes obě jádra.</p>
+      <h3>Proč stačí rovnice pro jeden elektron</h3>
+      <p>Odpuzování od druhého elektronu je už schované v potenciálu (V_H a V_xc). Rovnice tedy nemusí řešit oba elektrony najednou. Oba cítí <b>úplně stejný</b> potenciál, takže pro oba vyjde stejný orbital. Stačí ho spočítat jednou a v kroku 6 do něj dát oba elektrony.</p>
+      <h3>Jak to VASP technicky řeší</h3>
+      <p>Orbital zapíše jako <b>součet vln</b> (sinusovek a kosinusovek, které se přesně vejdou do krabice), podobně jako Fourierova řada:</p>
+      <div class="f">ψ(r) = c₀ + c₁·vlna₁(r) + c₂·vlna₂(r) + …</div>
+      <p>Tvary vln jsou dané předem, hledají se jen <b>čísla c</b>. Z rovnice se tak stane úloha s maticí (hledání vlastních čísel a vektorů). Kinetická energie každé vlny je jednoduchá, což je pro výpočet velká výhoda.</p>
+      <p><b>ENCUT</b> říká, kolik vln se použije: všechny vlny s kinetickou energií pod ENCUT. Víc vln znamená jemnější detaily a přesnější výsledek, ale pomalejší výpočet. V animaci si to můžeš vyzkoušet posuvníkem.</p>
+      <p>Vln jsou desítky tisíc, takže VASP celou matici neřeší najednou. V každé obrátce jen <b>vylepší</b> orbitaly z minulé obrátky iterační metodou: Davidson (proto „DAV“ ve výpisu) nebo RMM-DIIS („RMM“). Počítá navíc pár neobsazených orbitalů navíc (NBANDS), aby výpočet stabilně konvergoval.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k6">Krok 6 (SCF c): Nový oblak z orbitalů</h2>
+      <div class="io"><b>MÁŠ</b><span>orbitaly ψ a jejich energie ε</span><b>VYJDE</b><span>nový oblak n_výstup(r)</span><b>KAM</b><span>do kroku 7</span></div>
+      <h3>1. Rozmístění elektronů do orbitalů</h3>
+      <p>Elektrony se „nasypou“ do orbitalů od nejnižší energie. Do každého orbitalu se vejdou nejvýš 2: jeden se spinem nahoru, druhý se spinem dolů (Pauliho princip). H₂ má 2 elektrony, oba jdou do nejnižšího orbitalu ψ₁.</p>
+      <p>U větších systémů se zaplňuje od spodu: první dva elektrony do ψ₁, další dva do ψ₂ atd., dokud nejsou umístěné všechny. U kovů se obsazení na hraně trochu „rozmaže“ (ISMEAR, SIGMA), aby výpočet nekmital. U magnetických systémů se spin nahoru a dolů počítá zvlášť (ISPIN = 2).</p>
+      <h3>2. Výpočet hustoty</h3>
+      <p>Pravděpodobnost, že najdeš elektron v bodě r, je <b>druhá mocnina orbitalu</b>, |ψ(r)|². Vynásobíš počtem elektronů v orbitalu a sečteš přes obsazené orbitaly:</p>
+      <div class="f">n_výstup(r) = Σ (počet elektronů v orbitalu) · |ψ(r)|² &nbsp;=&nbsp; 2 · |ψ₁(r)|² &nbsp;(pro H₂)</div>
+      <p>Kontrola: když hustotu sečteš přes celý prostor, musí vyjít počet elektronů (pro H₂ právě 2).</p>
+      <p>Nový oblak bude jiný než odhad z kroku 3: mezi jádry teď bude víc elektronů, protože vazebný orbital je tam rozprostřený.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k7">Krok 7 (SCF d): Porovnání a míchání</h2>
+      <div class="io"><b>MÁŠ</b><span>oblak, ze kterého jsi vyšel (n_vstup), a oblak, který ti vyšel (n_výstup)</span><b>VYJDE</b><span>n_nová, lepší odhad oblaku</span><b>KAM</b><span>do kroku 8 a pak jako nový vstup zpět do kroku 4</span></div>
+      <p><b>Porovnáš je.</b> Kdyby byly stejné, bylo by hotovo: oblak vytvoří potenciál, ten dá orbitaly a z nich vyjde zase přesně ten samý oblak. Kruh je uzavřený. To je <b>samosouhlasnost</b> (self-consistency), odtud název SCF (self-consistent field).</p>
+      <p>Pokud se liší, <b>neskočíš rovnou na nový oblak</b>. Hustota by přeskakovala tam a zpátky: do vazby moc elektronů, pak moc málo, pak zase moc. Uděláš jen krok směrem k novému:</p>
+      <div class="f">n_nová = n_vstup + 0,4 · (n_výstup − n_vstup)</div>
+      <p>Číslo 0,4 je ve VASPu <b>AMIX</b>. Skutečný VASP míchá chytřeji (Pulay nebo Broyden): pamatuje si i několik minulých obrátek a z nich odhadne, kde leží oblak, pro který by se vstup a výstup rovnaly.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k8">Krok 8 (SCF e): Energie a kontrola</h2>
+      <div class="io"><b>MÁŠ</b><span>nový oblak a orbitaly</span><b>VYJDE</b><span>jedno číslo E a rozhodnutí, jestli pokračovat</span><b>KAM</b><span>buď zpět do kroku 4, nebo konec SCF a pokračování krokem 9</span></div>
+      <h3>Výpočet energie</h3>
+      <p>Sečteš čtyři části energie z bodu 0:</p>
+      <ul>
+        <li>kinetickou energii elektronů (z orbitalů),</li>
+        <li>přitahování oblaku k jádrům (dosadíš hustotu a potenciál jader),</li>
+        <li>odpuzování oblaku samo od sebe (dosadíš hustotu) plus kvantovou opravu,</li>
+        <li>odpuzování jader (jen jejich vzdálenost: +1 · +1 / d).</li>
+      </ul>
+      <h3>Kontrola: mění se ještě energie?</h3>
+      <p>Spočítáš rozdíl oproti minulé obrátce, dE = E_teď − E_minule:</p>
+      <ul>
+        <li><b>|dE| je větší než EDIFF</b> (např. 0,0001 eV): energie se ještě mění, n_nová se stane novým vstupem a jde se <b>zpět na krok 4</b>,</li>
+        <li><b>|dE| je menší než EDIFF:</b> oblak je samosouhlasný a SCF končí. Výsledkem je <b>energie</b> a <b>správný oblak</b>.</li>
+      </ul>
+      <h3>Nevybírá se nižší energie</h3>
+      <p>Důležité: z obou energií <b>nevybíráš tu nižší</b>. Jen se díváš, jestli se ještě mění. Pokračuje se vždycky z nového oblaku, ať energie vzrostla, nebo klesla.</p>
+      <p>Je to jako když na kalkulačce opakovaně mačkáš cos (v radiánech), začneš třeba z 1:</p>
+      <div class="tbl"><table style="max-width:320px">
+        <thead><tr><th>Krok</th><th>x</th><th>změna</th></tr></thead>
+        <tbody><tr><td>1</td><td>0,540</td><td>−0,460</td></tr><tr><td>2</td><td>0,858</td><td>+0,318</td></tr><tr><td>3</td><td>0,654</td><td>−0,204</td></tr><tr><td>4</td><td>0,793</td><td>+0,139</td></tr><tr><td>…</td><td>…</td><td>…</td></tr><tr><td>30</td><td>0,7391</td><td>0,0000…</td></tr></tbody>
+      </table></div>
+      <p style="margin-top:10px">Hodnota skáče nahoru a dolů, ale kmity se zmenšují, až se ustálí. Nevybíráš „nejlepší“ hodnotu, prostě opakuješ, dokud se výsledek nepřestane měnit. SCF je přesně tohle, jen místo jednoho čísla opakuješ celou hustotu.</p>
+      <p>Výpis SCF v OSZICARu pak vypadá zhruba takhle:</p>
+<pre class="map">       N       E           dE
+DAV:   1    -2.104      -2.104        (první, není s čím srovnat)
+DAV:   2    -6.482      -4.378
+DAV:   3    -6.791      -0.309
+DAV:   4    -6.802      -0.011
+DAV:   5    -6.8031     -0.0011
+DAV:   6    -6.80316    -0.00006   &lt;- menší než EDIFF, konec</pre>
+      <p>Výsledná energie je ta <b>poslední</b>, při které se to ustálilo (řádek „F=“ v OSZICARu).</p>
+      <p>Kde naopak <b>nižší = lepší</b> platí, je vnější smyčka (kroky 9 a 10). Tam opravdu hledáš polohy jader s co nejnižší energií.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k9">Krok 9: Síly na jádra</h2>
+      <div class="io"><b>MÁŠ</b><span>správný (samosouhlasný) oblak a polohy jader</span><b>VYJDE</b><span>vektor síly na každé jádro</span><b>KAM</b><span>do kroku 10 a do OUTCARu (blok TOTAL-FORCE)</span></div>
+      <p>Síla na jádro je opět Coulomb:</p>
+      <ul>
+        <li>jádro je <b>přitahováno k elektronovému oblaku</b>: dosadíš hustotu a sečteš přitažlivost od každého kousku oblaku,</li>
+        <li>jádro je <b>odpuzováno od druhého jádra</b>: dosadíš jejich vzdálenost.</li>
+      </ul>
+      <p>Žádné další řešení rovnic není potřeba, oblak už máš. Je to proto, že oblak je v minimu energie: když jádrem pohneš o malý kousek, změna oblaku se do energie v prvním přiblížení neprojeví. Stačí tedy počítat jen to, co na poloze jádra závisí přímo. Tomu se říká <b>Hellmannův-Feynmanův teorém</b>.</p>
+      <p>Proto musí být SCF dobře zkonvergovaná: s nepřesným oblakem vyjdou nepřesné i síly. Pro relaxace se doporučuje EDIFF aspoň 1E-5.</p>
+      <p>U natažené vazby převáží přitahování k oblaku mezi jádry a jádra se táhnou k sobě. U stlačené převáží odpuzování jader a tlačí se od sebe.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="k10">Krok 10: Posun jader</h2>
+      <div class="io"><b>MÁŠ</b><span>síly na jádra</span><b>VYJDE</b><span>nové polohy jader, nebo konec relaxace</span><b>KAM</b><span>zpět na krok 2</span></div>
+      <ul>
+        <li>Pokud jsou všechny síly <b>skoro nulové</b> (menší než |EDIFFG|, např. 0,02 eV/Å), jsou jádra v rovnováze a <b>konec</b>. VASP vypíše „reached required accuracy“.</li>
+        <li>Jinak jádra <b>posuneš kousek ve směru síly</b>. Způsob vybírá IBRION: 1 = quasi-Newton (z historie odhaduje tvar energetické plochy), 2 = konjugované gradienty, 0 = molekulová dynamika (pohyb podle Newtonova zákona s časovým krokem POTIM).</li>
+      </ul>
+      <p>Nové polohy jdou <b>zpět na krok 2</b>: spočítá se nový potenciál jader a jako první odhad oblaku se vezme ten z minulého kroku. Ten je skoro správně, a proto je další SCF kratší. Aktuální struktura se průběžně zapisuje do CONTCARu.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="prehled">Přehled: co kam dosazuješ</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Krok</th><th>Dosadíš</th><th>Dostaneš</th></tr></thead>
+        <tbody>
+          <tr><td>2</td><td>polohy jader</td><td>potenciál jader</td></tr>
+          <tr><td>3</td><td>hustoty atomů z POTCARu</td><td>první odhad oblaku</td></tr>
+          <tr><td>4</td><td>oblak + potenciál jader</td><td>potenciál, který cítí elektron</td></tr>
+          <tr><td>5</td><td>potenciál</td><td>orbitaly a jejich energie</td></tr>
+          <tr><td>6</td><td>orbitaly</td><td>nový oblak</td></tr>
+          <tr><td>7</td><td>starý + nový oblak</td><td>smíchaný oblak (zpět na 4, dokud se mění)</td></tr>
+          <tr><td>8</td><td>oblak + orbitaly</td><td>energie</td></tr>
+          <tr><td>9</td><td>oblak + polohy jader</td><td>síly</td></tr>
+          <tr><td>10</td><td>síly</td><td>nové polohy (zpět na 2)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h2 id="zjedn">Co je v animaci zjednodušené</h2>
+      <ul>
+        <li>Graf je jen řez podél osy vazby. Skutečný oblak je trojrozměrný, tvarem trochu jako burský oříšek.</li>
+        <li>Čísla energie a sil se počítají z jednoduchého modelu, ne ze skutečného řešení Kohn-Shamových rovnic. Postup, pořadí kroků a to, co kam vstupuje, ale odpovídají VASPu.</li>
+        <li>Míchání je v animaci jen lineární (0,4), VASP míchá chytřeji.</li>
+        <li>Posun jader je nejjednodušší možný (krok ve směru síly), VASP používá chytřejší algoritmy.</li>
+      </ul>
+    </div>
+    <button class="back primary" id="backA">← Zpět na animaci</button>
+  </div>
+</div>
+<script>
+const De=4.75,a=1.94,d0=0.74,K=14.40,BOX=10,BETA=0.4,CRES=-0.5,CQ=3.0,SL=1.8;
+const Eof=d=>De*Math.pow(1-Math.exp(-a*(d-d0)),2)-De;
+const Gof=d=>2*De*a*(1-Math.exp(-a*(d-d0)))*Math.exp(-a*(d-d0));
+const wStar=d=>Math.max(0,Math.min(1,Math.exp(-1.6*(d-0.74))));
+const $=id=>document.getElementById(id);
+const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function rgba(hex,al){const h=hex.replace('#','');const n=parseInt(h.length===3?h.split('').map(x=>x+x).join(''):h,16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${al})`;}
+function fE(x,dig){if(x===0)return ' .'+'0'.repeat(dig)+'E+00';const s=x<0?'-':' ';let e=Math.floor(Math.log10(Math.abs(x)))+1;let m=Math.abs(x)/Math.pow(10,e);let t=m.toFixed(dig);if(t.startsWith('1')){e++;m/=10;t=m.toFixed(dig);}return s+'.'+t.slice(2)+'E'+(e>=0?'+':'-')+String(Math.abs(e)).padStart(2,'0');}
+const f3=x=>x.toFixed(3),f4=x=>x.toFixed(4),c2=x=>x.toFixed(2).replace('.',',');
+
+/* hustota podél vazby: dva atomové příspěvky + příspěvek ve vazbě s vahou w */
+const gA=(s,x)=>Math.exp(-Math.pow((s-x)/0.35,2));
+const bond=(s,d)=>0.9*Math.exp(-Math.pow(s/(0.25+0.35*d),2));
+const dens=(s,d,w)=>gA(s,-d/2)+gA(s,d/2)+w*bond(s,d);
+const psi=(s,d,w)=>Math.sqrt(dens(s,d,w)/2);
+function pwCoef(d,w,N){const M=400,c=[];for(let k=0;k<=N;k++){let sum=0;for(let i=0;i<M;i++){const s=-SL+(i+0.5)*(2*SL/M);sum+=psi(s,d,w)*Math.cos(2*Math.PI*k*s/(2*SL));}c.push((k===0?1:2)*sum/M);}return c;}
+const pwEval=(c,s)=>c.reduce((t,ck,k)=>t+ck*Math.cos(2*Math.PI*k*s/(2*SL)),0);
+
+let d,phase,ion,hist,lines,wcur,scf,cur,lastE,justMoved=false;
+function reset(){justMoved=false;d=1.10;phase=0;ion=1;hist=[];lines=[];wcur=0;scf=null;cur={};lastE=null;
+  lines.push(' POSCAR: H2 v krabici 10 x 10 x 10 A',' ALGO = Normal (DAV), EDIFF = 1E-4, AMIX = 0.4',' IBRION = 1, EDIFFG = -0.02','');
+  explainStart();render();}
+
+function explainStart(){
+  $('explain').innerHTML=`<h2>1. Polohy jader</h2>
+  <p>VASP načte polohy jader a <b>zmrazí je</b> ve vzdálenosti ${f3(d)} Å. Během celé SCF smyčky se nehnou. Z jejich poloh spočítá potenciál jader: dvě hluboké jámy, do kterých jsou elektrony přitahovány.</p>
+  <p>Teď potřebujeme <b>první odhad elektronového oblaku</b>. ${ion===1?'Na začátku VASP vezme oblaky dvou samostatných atomů vodíku a položí je vedle sebe. Mezi jádry ještě skoro nic není, vazba se v oblaku zatím neukazuje.':'Vezme oblak z minulého iontového kroku. Jádra se posunula jen trochu, takže odhad je skoro správně a SCF bude potřebovat méně obrátek.'}</p>
+  <p>Hustota n(r) říká, kolik elektronů je v daném místě prostoru. V grafu je řez oblakem podél osy vazby.</p>`;}
+
+function startSCF(){justMoved=false;phase=1;scf={n:1,sub:0,win:wcur,ws:wStar(d),Et:Eof(d),prev:null};lines.push('       N       E                     dE');showSub();}
+
+function subText(){const s=scf,n=s.n;
+  const T=[
+  `<h2>a) Co elektron cítí (obrátka ${n})</h2>
+   <p>Elektron cítí součet tří částí. V grafu je každá zvlášť a tlustě jejich součet:</p>
+   <div class="f">V_eff = V_jádra + V_H + V_xc</div>
+   <p><span class="sw" style="background:var(--pull)"></span><b>V_jádra, přitahování k jádrům.</b> Záporný, s hlubokými jámami u jader. Závisí jen na tom, kde jádra stojí.</p>
+   <p><span class="sw" style="background:var(--repel)"></span><b>V_H, odpuzování od oblaku elektronů.</b> Kladný. Elektrostatika rozloženého náboje: kde je oblak hustý, tam víc odpuzuje.</p>
+   <p><span class="sw" style="background:var(--orb)"></span><b>V_xc, kvantová oprava.</b> Záporná a menší. Elektrony se navzájem vyhýbají, takže skutečné odpuzování je slabší. Bere se z funkcionálu (LDA, PBE).</p>
+   <p><span class="sw" style="background:var(--fg)"></span><b>V_eff, součet.</b> Jámy jsou mělčí než u samotných jader (šedá čárkovaná), protože oblak část přitahování vyruší.</p>
+   <p>V_H a V_xc se počítají z oblaku, který teprve hledáme. Proto se vezme aktuální odhad. ${n===1&&ion===1?'Teď je to oblak samostatných atomů, mezi jádry je ho málo.':'S každou obrátkou je odhad přesnější.'}</p>`,
+  `<h2>b) Orbitaly (obrátka ${n})</h2>
+   <p>V potenciálu V_eff se vyřeší <b>Schrödingerova rovnice pro jeden elektron</b>, stejně jako u částice v jámě. Vyjdou <b>orbitaly ψ</b> a jejich energie.</p>
+   <p>Stačí jeden elektron, protože odpuzování od druhého je už schované v potenciálu. Oba elektrony cítí stejný potenciál, takže mají stejný orbital.</p>
+   <p>VASP orbital skládá ze <b>součtu vln</b> (kosinusovky v grafu nahoře) a hledá jen jejich koeficienty:</p>
+   <div class="f">ψ(r) = c₀ + c₁·cos(…) + c₂·cos(…) + … </div>
+   <p>Posuň posuvník pod grafem: s málo vlnami je orbital hrubý, s víc vlnami přesný. Kolik vln se použije, určuje <b>ENCUT</b>.</p>`,
+  `<h2>c) Nový oblak z orbitalů (obrátka ${n})</h2>
+   <p>Elektrony se dají do orbitalů od nejnižší energie, nejvýš 2 do jednoho (spin nahoru a dolů). U H₂ jdou oba do vazebného orbitalu.</p>
+   <p>Pravděpodobnost výskytu elektronu je <b>|ψ|²</b>. Krát počet elektronů v orbitalu dává hustotu:</p>
+   <div class="f">n_výstup(r) = 2 · |ψ(r)|²</div>
+   <p>V grafu: zelená plná je ψ, zelená čárkovaná |ψ|², fialová plocha nový oblak. Šedá čárkovaná je oblak, ze kterého jsme vyšli.</p>
+   <p>${Math.abs(s.wout-s.win)<0.01?'Nový a starý oblak jsou skoro stejné.':'Nový oblak je <b>jiný</b> než starý: '+(s.wout>s.win?'mezi jádry je ho víc.':'mezi jádry je ho méně.')+' Ještě nejsme samosouhlasní.'}</p>`,
+  `<h2>d) Míchání (obrátka ${n})</h2>
+   <p>Kdyby byl nový oblak stejný jako starý, bylo by hotovo. Není, ale rovnou na něj neskočíme, protože by oblak přeskakoval tam a zpátky. Uděláme jen krok směrem k němu:</p>
+   <div class="f">n_nová = n_vstup + 0,4 · (n_výstup − n_vstup)</div>
+   <p>Číslo 0,4 je ve VASPu <b>AMIX</b>. Skutečný VASP míchá chytřeji a pamatuje si i minulé obrátky.</p>`,
+  `<h2>e) Energie a kontrola (obrátka ${n})</h2>
+   <p>Z nového oblaku se spočítá energie a porovná se s minulou obrátkou. To je jeden řádek <b>DAV</b> ve výpisu.</p>
+   <p>Nevybírá se nižší energie. Jen se kontroluje, jestli se energie ještě mění.</p>
+   <p>${s.prev===null?'V první obrátce není s čím porovnat.':(s.done?'<b class="ok">Změna '+Math.abs(s.dE).toExponential(1)+' eV je menší než EDIFF = 1·10⁻⁴ eV. SCF je hotová.</b>':'Změna '+Math.abs(s.dE).toExponential(1)+' eV je pořád větší než EDIFF = 1·10⁻⁴ eV.')}</p>
+   <p>${s.done?'':'Nový oblak se stane vstupem a jde se znovu na krok a).'}</p>`];
+  return T[s.sub];}
+
+function showSub(){$('explain').innerHTML=subText();render();}
+
+function subStep(){const s=scf;
+  if(s.sub===0){s.sub=1;}
+  else if(s.sub===1){s.wout=s.ws+CRES*(s.win-s.ws);s.sub=2;}
+  else if(s.sub===2){s.wnew=s.win+BETA*(s.wout-s.win);s.sub=3;}
+  else if(s.sub===3){const En=s.Et+CQ*Math.pow(s.wnew-s.ws,2);s.dE=s.prev===null?En:En-s.prev;s.E=En;
+    s.done=s.prev!==null&&Math.abs(s.dE)<1e-4;
+    lines.push(` DAV: ${String(s.n).padStart(3)}    ${fE(En,12)}   ${fE(s.dE,5)}`);s.sub=4;}
+  else{ if(s.done){finishSCF();return;} s.prev=s.E;s.win=s.wnew;s.n++;s.sub=0;s.wout=undefined;s.wnew=undefined;}
+  showSub();}
+
+function finishSCF(){const s=scf;wcur=s.wnew;cur={E:s.E,n:s.n};
+  const dEi=lastE===null?s.E:s.E-lastE;
+  lines.push(`${String(ion).padStart(4)} F= ${fE(s.E,8)} E0= ${fE(s.E,8)}  d E =${fE(dEi,6)}`,'');
+  phase=2;
+  $('explain').innerHTML=`<h2>2. SCF je hotová</h2>
+  <p>Po <b>${s.n} obrátkách</b> se oblak přestal měnit. Máme základní stav elektronů pro tuhle polohu jader.</p>
+  <p>Výsledek je jedno číslo, celková energie <span class="val">F = ${f4(s.E)} eV</span> (řádek s F= ve výpisu), a k tomu správný oblak, ze kterého se teď spočítají síly.</p>`;render();}
+
+function fastForward(){if(phase===0)startSCF();if(phase!==1)return;let guard=0;while(phase===1&&guard++<200){
+  const s=scf;if(s.sub===4&&s.done){finishSCF();break;}subStep();}}
+
+function forces(){const g=Gof(d),rep=K/(d*d),pull=g+rep;cur.g=g;cur.rep=rep;cur.pull=pull;cur.F=Math.abs(g);
+  const x1=BOX/2-d/2,x2=BOX/2+d/2;
+  lines.push(' POSITION                                       TOTAL-FORCE (eV/Angst)',
+   ' -----------------------------------------------------------------------------------',
+   `      ${x1.toFixed(5).padStart(8)}      5.00000      5.00000        ${g.toFixed(6).padStart(10)}      0.000000      0.000000`,
+   `      ${x2.toFixed(5).padStart(8)}      5.00000      5.00000        ${(-g).toFixed(6).padStart(10)}      0.000000      0.000000`,
+   ' -----------------------------------------------------------------------------------','');
+  const conv=Math.abs(g)<0.02;if(conv)lines.push(' reached required accuracy - stopping structural energy minimisation');
+  phase=3;
+  $('explain').innerHTML=`<h2>3. Síly na jádra</h2>
+  <p>Síla na jádro je elektrostatika. Kladné jádro cítí:</p>
+  <p><span class="sw" style="background:var(--pull)"></span><b>přitahování k elektronovému oblaku</b>: ${c2(pull)} eV/Å, do vazby<br>
+  <span class="sw" style="background:var(--repel)"></span><b>odpuzování od druhého jádra</b>: ${c2(rep)} eV/Å, ven<br>
+  <span class="sw" style="background:var(--force)"></span><b>výsledná síla</b>: ${c2(Math.abs(g))} eV/Å, ${conv?'skoro nula':(g>0?'jádra se táhnou k sobě':'jádra se tlačí od sebe')}</p>
+  <p>Oblak už máme, takže žádné další rovnice se řešit nemusí. Ve výpisu je to blok TOTAL-FORCE z OUTCARu.</p>
+  ${conv?'<p class="ok">Síly jsou menší než |EDIFFG| = 0,02 eV/Å. Relaxace je hotová.</p>':''}`;render();}
+
+function move(){const al=parseFloat($('alpha').value),g=cur.g;const dn=Math.max(0.5,Math.min(1.9,d-2*al*g));
+  hist.push({i:ion,d,E:cur.E,n:cur.n,F:Math.abs(g)});lastE=cur.E;
+  $('explain').innerHTML=`<h2>4. Posun jader</h2>
+  <p>Každé jádro se posune kousek ve směru své síly: <span class="val">nová poloha = stará + krok · síla</span>.</p>
+  <p>Vzdálenost se změní z ${f3(d)} Å na <b>${f3(dn)} Å</b>. Oblak zůstane z minulého kroku jako první odhad pro další SCF.</p>
+  <p class="note">Ve VASPu algoritmus posunu vybírá IBRION (1 = quasi-Newton, 2 = konjugované gradienty).</p>`;
+  d=dn;ion++;phase=0;scf=null;justMoved=true;lines.push(` --- iontový krok ${ion}: d = ${f3(d)} A ---`,'');render();}
+
+function next(){if(phase===0)startSCF();else if(phase===1)subStep();else if(phase===2)forces();else if(phase===3){if(cur.F<0.02)reset();else move();}}
+
+function fit(cv){const w=cv.clientWidth,h=parseInt(cv.getAttribute('height'));const r=window.devicePixelRatio||1;
+  cv.width=w*r;cv.height=h*r;cv.style.height=h+'px';const x=cv.getContext('2d');x.setTransform(r,0,0,r,0,0);return [x,w,h];}
+function arrow(c,x,y,len,col,w){if(Math.abs(len)<2)return;const s=Math.sign(len);c.strokeStyle=col;c.fillStyle=col;c.lineWidth=w;
+  c.beginPath();c.moveTo(x,y);c.lineTo(x+len-6*s,y);c.stroke();c.beginPath();c.moveTo(x+len,y);c.lineTo(x+len-9*s,y-5);c.lineTo(x+len-9*s,y+5);c.closePath();c.fill();}
+
+function shownW(){if(phase===1){const s=scf;if(s.sub>=3&&s.wnew!==undefined)return s.wnew;return s.win;}return wcur;}
+
+function theoryTarget(){if(phase===0)return justMoved?'k10':'k2';if(phase===1)return ['k4','k5','k6','k7','k8'][scf.sub];if(phase===2)return 'k8';return 'k9';}
+
+function render(){
+  if($('viewA').hidden)return;
+  $('ion').textContent=ion;$('dNow').textContent=f3(d)+' Å';$('aOut').textContent=parseFloat($('alpha').value).toFixed(3);
+  $('scfN').textContent=phase===1?scf.n:(phase>=2&&cur.n?cur.n+' (hotovo)':'–');
+  document.querySelectorAll('.stage').forEach(el=>{const k=+el.dataset.s;const act=phase===0?(justMoved?3:0):phase<=2?1:2;el.classList.toggle('on',k===act);});
+  document.querySelectorAll('.sub').forEach((el,i)=>el.classList.toggle('on',phase===1&&scf.sub===i));
+  const b=$('next');
+  b.textContent=phase===0?'Spusť SCF smyčku':phase===1?(scf.sub===4&&scf.done?'Ukončit SCF':'Další krok SCF'):phase===2?'Spočítej síly':(cur.F<0.02?'Hotovo, začít znovu':'Posuň jádra');
+  $('ff').hidden=!(phase<=1);
+  $('pwRow').hidden=!(phase===1&&scf.sub===1);$('npwO').textContent=$('npw').value;
+  const L=$('log');L.textContent=lines.join('\n');L.scrollTop=L.scrollHeight;
+  $('hist').innerHTML=hist.length?hist.map(r=>`<tr><td>${r.i}</td><td>${f3(r.d)}</td><td>${f4(r.E)}</td><td>${r.n}</td><td>${f4(r.F)}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:left;font-family:var(--sans);color:var(--muted)">Zatím žádný dokončený iontový krok</td></tr>';
+  drawMol();drawProf();}
+
+function drawMol(){let [c,W,H]=fit($('mol'));const s=Math.min(190,W*0.3),cx=W/2,y=46,p1=cx-d*s/2,p2=cx+d*s/2,cl=tok('--cloud');const w=shownW();
+  [p1,p2].forEach(p=>{const gr=c.createRadialGradient(p,y,0,p,y,0.55*s);gr.addColorStop(0,rgba(cl,0.45));gr.addColorStop(1,rgba(cl,0));c.fillStyle=gr;c.beginPath();c.arc(p,y,0.55*s,0,7);c.fill();});
+  if(w>0.01){c.save();c.translate(cx,y);c.scale(Math.max(1,d*1.4),0.7);const r0=0.5*s;const gr=c.createRadialGradient(0,0,0,0,0,r0);gr.addColorStop(0,rgba(cl,0.55*w));gr.addColorStop(1,rgba(cl,0));c.fillStyle=gr;c.beginPath();c.arc(0,0,r0,0,7);c.fill();c.restore();}
+  c.fillStyle=tok('--nucleus');[p1,p2].forEach(p=>{c.beginPath();c.arc(p,y,5,0,7);c.fill();});
+  c.font='500 12px IBM Plex Sans, sans-serif';c.textAlign='center';c.fillStyle=tok('--muted');c.fillText('H',p1,y-12);c.fillText('H',p2,y-12);
+  if(phase===3){const k=2.6,cap=Math.min(100,W*0.2);const ln=v=>Math.sign(v)*Math.min(cap,Math.abs(v)*k);
+    arrow(c,p1,y+30,ln(cur.pull),tok('--pull'),2);arrow(c,p2,y+30,-ln(cur.pull),tok('--pull'),2);
+    arrow(c,p1,y+44,-ln(cur.rep),tok('--repel'),2);arrow(c,p2,y+44,ln(cur.rep),tok('--repel'),2);
+    arrow(c,p1,y+60,ln(cur.g),tok('--force'),3.5);arrow(c,p2,y+60,-ln(cur.g),tok('--force'),3.5);}
+  else{c.font='11px JetBrains Mono, monospace';c.fillText('elektronový oblak (pohled z boku)',cx,H-12);}}
+
+function drawProf(){let [c,W,H]=fit($('prof'));const L=12,R=12,T=12,B=26,Y=[-0.1,2.5];
+  const px=s=>L+(s+SL)/(2*SL)*(W-L-R),py=v=>T+(Y[1]-v)/(Y[1]-Y[0])*(H-T-B);
+  const N=220,xs=[...Array(N+1)].map((_,i)=>-SL+i*(2*SL/N));
+  const line=(f,col,w,dash)=>{c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash||[]);c.beginPath();xs.forEach((s,i)=>{const v=py(f(s));i?c.lineTo(px(s),v):c.moveTo(px(s),v);});c.stroke();c.setLineDash([]);};
+  const area=(f,col,al)=>{c.fillStyle=rgba(col,al);c.beginPath();c.moveTo(px(-SL),py(0));xs.forEach(s=>c.lineTo(px(s),py(f(s))));c.lineTo(px(SL),py(0));c.closePath();c.fill();line(f,col,2);};
+  c.strokeStyle=tok('--line');c.lineWidth=1;c.beginPath();c.moveTo(L,py(0));c.lineTo(W-R,py(0));c.stroke();
+  c.strokeStyle=tok('--ghost');c.setLineDash([2,3]);[-d/2,d/2].forEach(x=>{c.beginPath();c.moveTo(px(x),T);c.lineTo(px(x),py(0));c.stroke();});c.setLineDash([]);
+  c.fillStyle=tok('--muted');c.font='11px JetBrains Mono, monospace';c.textAlign='center';[-d/2,d/2].forEach(x=>c.fillText('H',px(x),H-8));c.fillText('osa vazby',W/2,H-8);
+  const cl=tok('--cloud'),leg=[];
+  if(phase!==1){const w=wcur;area(s=>dens(s,d,w),cl,0.18);leg.push(['--cloud','elektronová hustota n']);}
+  else{const S=scf,nin=s=>dens(s,d,S.win);
+    if(S.sub===0){drawPot(c,W,H,L,R,T,B,xs,px,nin);
+      leg.push(['--pull','V_jádra (přitahování)'],['--repel','V_H (odpuzování oblaku)'],['--orb','V_xc (kvantová oprava)'],['--fg','V_eff = součet'],['--cloud','oblak n_vstup (v pozadí)']);}
+    else if(S.sub===1){const wo=S.ws+CRES*(S.win-S.ws);const Nw=+$('npw').value;const co=pwCoef(d,wo,Nw);
+      for(let k=1;k<=Math.min(3,Nw);k++){line(s=>1.9+0.25*Math.cos(2*Math.PI*k*s/(2*SL)),tok('--ghost'),1);}
+      line(s=>psi(s,d,wo),tok('--ghost'),1.5,[4,4]);line(s=>pwEval(co,s),tok('--orb'),2.5);
+      leg.push(['--orb','orbital ψ složený z '+Nw+' vln'],['--ghost','přesný tvar (čárkovaně), nahoře první vlny']);}
+    else if(S.sub===2){line(nin,tok('--ghost'),1.5,[4,4]);area(s=>dens(s,d,S.wout),cl,0.18);
+      line(s=>psi(s,d,S.wout)**2,tok('--orb'),1.5,[3,3]);line(s=>psi(s,d,S.wout),tok('--orb'),2);
+      leg.push(['--orb','ψ (plná) a |ψ|² (čárkovaná)'],['--cloud','nový oblak = 2·|ψ|²'],['--ghost','starý oblak']);}
+    else{line(nin,tok('--ghost'),1.5,[4,4]);line(s=>dens(s,d,S.wout),tok('--pot'),1.5,[2,3]);area(s=>dens(s,d,S.wnew),cl,0.22);
+      leg.push(['--cloud',S.sub===3?'smíchaný oblak':'smíchaný oblak, z něj se počítá energie'],['--ghost','starý oblak'],['--pot','nový oblak z kroku c)']);}}
+  $('legend').innerHTML=leg.map(([t,l])=>`<span><span class="sw" style="background:var(${t})"></span>${l}</span>`).join('');}
+
+function drawPot(c,W,H,L,R,T,B,xs,px,nin){
+  const ds=xs[1]-xs[0];let Ne=0;xs.forEach(s=>Ne+=nin(s)*ds);const nn=s=>2*nin(s)/Ne;
+  const nv=xs.map(nn);
+  const Vext=s=>-1/Math.sqrt((s+d/2)**2+0.04)-1/Math.sqrt((s-d/2)**2+0.04);
+  const VH=xs.map(s=>{let t=0;xs.forEach((s2,j)=>t+=nv[j]/Math.sqrt((s-s2)**2+0.09)*ds);return t;});
+  const Vxc=xs.map((s,i)=>-0.9*Math.cbrt(nv[i]));
+  const Ve=xs.map(Vext),Vt=xs.map((s,i)=>Ve[i]+VH[i]+Vxc[i]);
+  let mn=Math.min(...Ve,...Vt),mx=Math.max(...VH,0.5);const pad=(mx-mn)*0.06;mn-=pad;mx+=pad;
+  const py=v=>T+(mx-v)/(mx-mn)*(H-T-B);
+  const top=Math.max(...nv);c.fillStyle=rgba(tok('--cloud'),0.12);c.beginPath();c.moveTo(px(xs[0]),py(0));
+  xs.forEach((s,i)=>c.lineTo(px(s),py(0)-(nv[i]/top)*(py(0)-T)*0.55));c.lineTo(px(xs[xs.length-1]),py(0));c.closePath();c.fill();
+  c.strokeStyle=tok('--muted');c.lineWidth=1;c.beginPath();c.moveTo(L,py(0));c.lineTo(W-R,py(0));c.stroke();
+  c.fillStyle=tok('--muted');c.font='11px JetBrains Mono, monospace';c.textAlign='left';c.fillText('0',L+2,py(0)-4);
+  c.fillText('+ odpuzuje',L+2,T+10);c.fillText('− přitahuje',L+2,H-B-4);
+  const ln=(arr,col,w,dash)=>{c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash||[]);c.beginPath();xs.forEach((s,i)=>{const v=py(arr[i]);i?c.lineTo(px(s),v):c.moveTo(px(s),v);});c.stroke();c.setLineDash([]);};
+  ln(Ve,tok('--ghost'),1.5,[4,4]);ln(Ve,tok('--pull'),1.5);ln(VH,tok('--repel'),2);ln(Vxc,tok('--orb'),2);ln(Vt,tok('--fg'),3);}
+
+function showView(v){$('viewA').hidden=v!=='A';$('viewT').hidden=v!=='T';
+  $('tabA').classList.toggle('on',v==='A');$('tabT').classList.toggle('on',v==='T');
+  $('tabA').setAttribute('aria-selected',v==='A');$('tabT').setAttribute('aria-selected',v==='T');
+  if(v==='A')render();window.scrollTo(0,0);}
+function openTheory(id){showView('T');const el=$(id);if(el)el.scrollIntoView({block:'start'});}
+
+$('tabA').onclick=()=>showView('A');$('tabT').onclick=()=>showView('T');$('backA').onclick=()=>showView('A');
+$('more').onclick=()=>openTheory(theoryTarget());
+document.querySelectorAll('#toc button').forEach(b=>b.onclick=()=>{const el=$(b.dataset.go);if(el)el.scrollIntoView({block:'start',behavior:'smooth'});});
+$('next').onclick=next;$('ff').onclick=fastForward;$('reset').onclick=reset;$('alpha').oninput=render;$('npw').oninput=render;
+window.addEventListener('resize',render);
+new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(window.matchMedia){const mq=matchMedia('(prefers-color-scheme: dark)');mq.addEventListener&&mq.addEventListener('change',render);}
+reset();
+</script>
+</body>
+</html>
