@@ -151,6 +151,8 @@ th:first-child,td:first-child{text-align:left}
       <p>Celý postup na molekule H₂, v pořadí, ve kterém postupuje VASP. U každého kroku je napsáno, <b>co máš</b>, <b>co s tím uděláš</b> a <b>co ti vyjde</b>.</p>
       <div class="toc" id="toc">
         <button data-go="k0">0. Co chceme</button>
+        <button data-go="sr">Schrödingerova rovnice</button>
+        <button data-go="dft">Nápad DFT</button>
         <button data-go="mapa">Mapa smyček</button>
         <button data-go="k1">1. Vstupy</button>
         <button data-go="k2">2. Potenciál jader</button>
@@ -184,7 +186,68 @@ th:first-child,td:first-child{text-align:left}
       <h3>Kde je problém</h3>
       <p>Jádra jsou asi dvoutisíckrát těžší než elektrony a pohybují se mnohem pomaleji. Při výpočtu elektronů je proto můžeme brát jako <b>nehybná</b>: zmrazíme je a jejich polohy jsou jen parametry (Bornova-Oppenheimerova aproximace).</p>
       <p>Elektrony se ale navzájem odpuzují. Kde je jeden, závisí na tom, kde je druhý, a naopak. Sledovat každý elektron zvlášť se všemi vzájemnými vlivy je pro víc než pár elektronů nepočitatelné: vlnová funkce N elektronů závisí na 3N souřadnicích najednou.</p>
-      <h3>Nápad DFT</h3>
+      <p>Jak přesně ten problém vypadá, ukazuje Schrödingerova rovnice v další části.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="sr">Schrödingerova rovnice: přesná odpověď, kterou chceme</h2>
+      <p>Kvantová mechanika má na elektrony v atomech a molekulách jednu základní rovnici. Všechno, co VASP dělá, je jen chytrý způsob, jak se dostat k jejímu výsledku, aniž bychom ji řešili přímo. Proto je dobré vědět, jak vypadá.</p>
+
+      <h3>Vlnová funkce Ψ</h3>
+      <p>Všechno, co se dá o elektronech zjistit, je schované ve <b>vlnové funkci</b> Ψ (velké psí). U H₂ závisí na poloze <b>obou elektronů najednou</b>:</p>
+      <div class="f">Ψ(r₁, r₂) &nbsp;&nbsp;r₁ = (x₁, y₁, z₁), r₂ = (x₂, y₂, z₂) &nbsp;→ 6 souřadnic</div>
+      <p>Význam má její druhá mocnina: <b>|Ψ(r₁, r₂)|²</b> je hustota pravděpodobnosti, že elektron 1 je v místě r₁ <b>a zároveň</b> elektron 2 v místě r₂. (Spin pro jednoduchost vynechávám.)</p>
+      <p>Proč obou najednou? Elektrony se odpuzují, takže kde je jeden, ovlivňuje, kde bude druhý. Když je elektron 1 u levého jádra, elektron 2 bude spíš u pravého. Ψ tuhle provázanost (korelaci) nese v sobě.</p>
+      <p class="note">Pozor na značení: velké Ψ je vlnová funkce všech elektronů dohromady, malé ψ (v krocích 5 a 6) jsou orbitaly jednotlivých elektronů.</p>
+
+      <h3>Rovnice</h3>
+      <div class="f">Ĥ Ψ = E Ψ</div>
+      <p><b>Ĥ</b> (hamiltonián) je „návod, jak z vlnové funkce spočítat energii“. Pro H₂ se zmraženými jádry v R₁ a R₂ (atomové jednotky) obsahuje přesně čtyři části energie z bodu 0:</p>
+      <div class="f">Ĥ = −½∇₁² − ½∇₂² &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(kinetická energie elektronů)<br>
+      &nbsp;&nbsp;&nbsp;− 1/|r₁−R₁| − 1/|r₁−R₂| − 1/|r₂−R₁| − 1/|r₂−R₂| &nbsp;&nbsp;(přitahování k jádrům)<br>
+      &nbsp;&nbsp;&nbsp;+ 1/|r₁−r₂| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(odpuzování elektronů)<br>
+      &nbsp;&nbsp;&nbsp;+ 1/|R₁−R₂| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(odpuzování jader)</div>
+      <p><b>Jak rovnici číst:</b> hledáme takové funkce Ψ, které hamiltonián „nezmění“, jen vynásobí číslem E. To číslo je energie toho stavu. Řešení je víc (základní a excitované stavy). To s <b>nejnižší</b> energií E₀ je <b>základní stav</b>, a E₀ je přesně ta energie molekuly, kterou chceme: jeden bod na energetické ploše, ve VASPu TOTEN.</p>
+
+      <h3>Proč je tak důležitá</h3>
+      <ul>
+        <li>Je to základní zákon pro elektrony v atomech a molekulách. Plyne z ní chemická vazba, tvary molekul i energie reakcí.</li>
+        <li>Kdybychom ji uměli vyřešit, měli bychom <b>přesnou energii</b> E₀, z ní síly na jádra a z Ψ i elektronovou hustotu. Hustotu dostaneš tak, že sečteš přes všechny možné polohy druhého elektronu:
+          <div class="f">n(r) = 2 · ∫ |Ψ(r, r₂)|² dr₂</div></li>
+        <li>DFT hledá <b>stejnou energii E₀ a stejnou hustotu n</b>, jen jinou cestou. Schrödingerova rovnice je tedy <b>zadání</b> a DFT je <b>metoda, jak ho vyřešit</b>.</li>
+      </ul>
+
+      <h3>Proč ji neřešíme přímo</h3>
+      <ul>
+        <li><b>Člen 1/|r₁ − r₂| svazuje elektrony.</b> Kvůli němu se rovnice nedá rozdělit na samostatné rovnice pro každý elektron. Bez něj by to šlo hned.</li>
+        <li><b>Ψ závisí na 3N souřadnicích.</b> Kdybys ji chtěl uložit na mřížce s 10 body v každém směru: H₂ (2 elektrony) potřebuje 10⁶ čísel, to jde. Molekula vody (10 elektronů) 10³⁰ čísel, buňka se 100 elektrony 10³⁰⁰. To nejde na žádném počítači.</li>
+        <li>Přesně „na papíře“ se dá vyřešit jen atom vodíku, který má jediný elektron. To je ten příklad z učebnic kvantové mechaniky.</li>
+      </ul>
+
+      <h3>Kde se Schrödingerova rovnice objeví v DFT</h3>
+      <p>Kohn a Sham ji nahradili rovnicí <b>stejného tvaru, ale pro jeden elektron</b>. Tu VASP řeší v kroku 5, v každé obrátce SCF:</p>
+      <div class="f">[ −½∇² + V_eff(r) ] ψᵢ(r) = εᵢ ψᵢ(r)</div>
+      <p>Odpuzování elektronů (člen 1/|r₁ − r₂|) se nepočítá přímo, ale „průměrně“ přes oblak (V_H) a s kvantovou opravou (V_xc). Tím se rovnice rozpojí a každý elektron se dá řešit zvlášť.</p>
+      <div class="tbl"><table>
+        <thead><tr><th></th><th>Úplná Schrödingerova rovnice</th><th>Kohn-Shamova rovnice (VASP)</th></tr></thead>
+        <tbody>
+          <tr><td>Co hledám</td><td>Ψ(r₁, …, r_N), 3N souřadnic</td><td>orbitaly ψᵢ(r), každý jen 3 souřadnice</td></tr>
+          <tr><td>Odpuzování elektronů</td><td>přesně, člen 1/|rᵢ − rⱼ|</td><td>průměrně přes oblak: V_H + V_xc</td></tr>
+          <tr><td>Energie molekuly</td><td>přímo jako vlastní hodnota E₀</td><td>sečte se v kroku 8 z oblaku a orbitalů</td></tr>
+          <tr><td>Hustota</td><td>integrací |Ψ|² přes ostatní elektrony</td><td>n = Σ 2·|ψᵢ|²</td></tr>
+          <tr><td>Přesnost</td><td>přesná</td><td>tak dobrá, jak dobrý je funkcionál V_xc</td></tr>
+          <tr><td>Kolik atomů zvládne</td><td>jednotky elektronů</td><td>stovky atomů</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note" style="margin-top:10px">Pozor: energie orbitalů εᵢ z Kohn-Shamovy rovnice <b>nejsou</b> energie molekuly. Celková energie se skládá až v kroku 8.</p>
+
+      <h3>Proč se hledá nejnižší energie (variační princip)</h3>
+      <p>Když do hamiltoniánu dosadíš <b>jakoukoli</b> zkusmou vlnovou funkci a spočítáš průměrnou energii, vyjde vždy <b>E ≥ E₀</b>. Rovnost platí jen pro skutečný základní stav. Čím lepší odhad, tím nižší energie.</p>
+      <p>Na stejném principu stojí DFT: správná hustota je ta, která dává <b>nejnižší</b> energii (druhý Hohenbergův-Kohnův teorém). SCF smyčka tohle minimum najde. Neznamená to, že energie klesá v každé obrátce SCF (viz krok 8), ale výsledek, na kterém se SCF ustálí, je minimum.</p>
+    </div>
+
+    <div class="panel th">
+      <h2 id="dft">Nápad DFT</h2>
       <p>Nesledovat jednotlivé elektrony, ale popsat je jako <b>rozmazaný oblak záporného náboje</b>, tedy <b>elektronovou hustotu n(r)</b>. Ta říká, kolik elektronů je v daném místě, a je to funkce jen tří souřadnic, ať je elektronů kolik chce.</p>
       <p>Každý elektron pak cítí tři věci: <b>jádra</b>, <b>průměrný oblak</b> elektronů a malou <b>kvantovou opravu</b>. Že hustota na popis stačí, zaručují Hohenbergovy-Kohnovy teorémy. Pro pochopení postupu je ale potřebovat nebudeš.</p>
       <h3 id="mapa">Mapa smyček</h3>
@@ -271,6 +334,7 @@ th:first-child,td:first-child{text-align:left}
       <p>Vyřešíš <b>Schrödingerovu rovnici pro jeden elektron</b> v tomhle potenciálu. Je to stejná úloha jako „částice v potenciálové jámě“ nebo atom vodíku z kvantové mechaniky, jen s jiným potenciálem:</p>
       <div class="f">[ −½∇² + V_eff(r) ] ψ(r) = ε ψ(r)</div>
       <p>První člen je kinetická energie, druhý potenciální. Dosadíš V_eff a hledáš funkce ψ, pro které rovnice platí. Říká se jí <b>Kohn-Shamova rovnice</b>.</p>
+      <p>Je to stejný typ rovnice jako úplná Schrödingerova rovnice ĤΨ = EΨ, jen pro jeden elektron místo všech najednou. <button class="link" data-go="sr">Srovnání s úplnou rovnicí →</button></p>
       <p>Výsledkem je sada <b>orbitalů</b>, stavů, ve kterých elektron může být, a jejich <b>energie</b>. Pro H₂ je nejnižší vazebný orbital, rozprostřený přes obě jádra.</p>
       <h3>Proč stačí rovnice pro jeden elektron</h3>
       <p>Odpuzování od druhého elektronu je už schované v potenciálu (V_H a V_xc). Rovnice tedy nemusí řešit oba elektrony najednou. Oba cítí <b>úplně stejný</b> potenciál, takže pro oba vyjde stejný orbital. Stačí ho spočítat jednou a v kroku 6 do něj dát oba elektrony.</p>
@@ -315,6 +379,7 @@ th:first-child,td:first-child{text-align:left}
         <li>odpuzování oblaku samo od sebe (dosadíš hustotu) plus kvantovou opravu,</li>
         <li>odpuzování jader (jen jejich vzdálenost: +1 · +1 / d).</li>
       </ul>
+      <p>Je to přibližně ta energie, kterou by dala úplná Schrödingerova rovnice ĤΨ = EΨ jako nejnižší vlastní hodnotu E₀. Přesná by byla, kdybychom znali přesný funkcionál V_xc. <button class="link" data-go="sr">Schrödingerova rovnice →</button></p>
       <h3>Kontrola: mění se ještě energie?</h3>
       <p>Spočítáš rozdíl oproti minulé obrátce, dE = E_teď − E_minule:</p>
       <ul>
@@ -436,6 +501,8 @@ function subText(){const s=scf,n=s.n;
    <p>V_H a V_xc se počítají z oblaku, který teprve hledáme. Proto se vezme aktuální odhad. ${n===1&&ion===1?'Teď je to oblak samostatných atomů, mezi jádry je ho málo.':'S každou obrátkou je odhad přesnější.'}</p>`,
   `<h2>b) Orbitaly (obrátka ${n})</h2>
    <p>V potenciálu V_eff se vyřeší <b>Schrödingerova rovnice pro jeden elektron</b>, stejně jako u částice v jámě. Vyjdou <b>orbitaly ψ</b> a jejich energie.</p>
+   <div class="f">[ −½∇² + V_eff ] ψ = ε ψ</div>
+   <p class="note">Úplná Schrödingerova rovnice ĤΨ = EΨ by musela řešit oba elektrony najednou, Ψ(r₁, r₂). To jde jen pro velmi malé systémy, proto DFT řeší tuhle jednodušší rovnici a odpuzování elektronů schová do V_eff.</p>
    <p>Stačí jeden elektron, protože odpuzování od druhého je už schované v potenciálu. Oba elektrony cítí stejný potenciál, takže mají stejný orbital.</p>
    <p>VASP orbital skládá ze <b>součtu vln</b> (kosinusovky v grafu nahoře) a hledá jen jejich koeficienty:</p>
    <div class="f">ψ(r) = c₀ + c₁·cos(…) + c₂·cos(…) + … </div>
@@ -452,6 +519,7 @@ function subText(){const s=scf,n=s.n;
    <p>Číslo 0,4 je ve VASPu <b>AMIX</b>. Skutečný VASP míchá chytřeji a pamatuje si i minulé obrátky.</p>`,
   `<h2>e) Energie a kontrola (obrátka ${n})</h2>
    <p>Z nového oblaku se spočítá energie a porovná se s minulou obrátkou. To je jeden řádek <b>DAV</b> ve výpisu.</p>
+   <p class="note">Tahle energie je přibližně nejnižší energie E₀ úplné Schrödingerovy rovnice ĤΨ = EΨ pro celou molekulu, tedy to, co bychom chtěli spočítat přesně.</p>
    <p>Nevybírá se nižší energie. Jen se kontroluje, jestli se energie ještě mění.</p>
    <p>${s.prev===null?'V první obrátce není s čím porovnat.':(s.done?'<b class="ok">Změna '+Math.abs(s.dE).toExponential(1)+' eV je menší než EDIFF = 1·10⁻⁴ eV. SCF je hotová.</b>':'Změna '+Math.abs(s.dE).toExponential(1)+' eV je pořád větší než EDIFF = 1·10⁻⁴ eV.')}</p>
    <p>${s.done?'':'Nový oblak se stane vstupem a jde se znovu na krok a).'}</p>`];
@@ -507,7 +575,7 @@ function move(){const al=parseFloat($('alpha').value),g=cur.g;const dn=Math.max(
 
 function next(){if(phase===0)startSCF();else if(phase===1)subStep();else if(phase===2)forces();else if(phase===3){if(cur.F<0.02)reset();else move();}}
 
-function fit(cv){if(!cv.dataset.h)cv.dataset.h=cv.getAttribute('height');const w=cv.clientWidth,h=+cv.dataset.h; const r=window.devicePixelRatio||1;
+function fit(cv){if(!cv.dataset.h)cv.dataset.h=cv.getAttribute('height');const w=cv.clientWidth,h=+cv.dataset.h;const r=window.devicePixelRatio||1;
   cv.width=w*r;cv.height=h*r;cv.style.height=h+'px';const x=cv.getContext('2d');x.setTransform(r,0,0,r,0,0);return [x,w,h];}
 function arrow(c,x,y,len,col,w){if(Math.abs(len)<2)return;const s=Math.sign(len);c.strokeStyle=col;c.fillStyle=col;c.lineWidth=w;
   c.beginPath();c.moveTo(x,y);c.lineTo(x+len-6*s,y);c.stroke();c.beginPath();c.moveTo(x+len,y);c.lineTo(x+len-9*s,y-5);c.lineTo(x+len-9*s,y+5);c.closePath();c.fill();}
@@ -590,7 +658,7 @@ function openTheory(id){showView('T');const el=$(id);if(el)el.scrollIntoView({bl
 
 $('tabA').onclick=()=>showView('A');$('tabT').onclick=()=>showView('T');$('backA').onclick=()=>showView('A');
 $('more').onclick=()=>openTheory(theoryTarget());
-document.querySelectorAll('#toc button').forEach(b=>b.onclick=()=>{const el=$(b.dataset.go);if(el)el.scrollIntoView({block:'start',behavior:'smooth'});});
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const el=$(b.dataset.go);if(el)el.scrollIntoView({block:'start',behavior:'smooth'});});
 $('next').onclick=next;$('ff').onclick=fastForward;$('reset').onclick=reset;$('alpha').oninput=render;$('npw').oninput=render;
 window.addEventListener('resize',render);
 new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
