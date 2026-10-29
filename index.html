@@ -129,10 +129,13 @@ th:first-child,td:first-child{text-align:left}
       <button class="link" id="more">Podrobně v teorii →</button>
     </div>
 
-    <div class="row">
-      <label class="row" style="gap:8px"><span class="lab">Velikost kroku jader</span>
-        <input type="range" id="alpha" min="0.005" max="0.06" step="0.005" value="0.015" style="width:120px">
-        <span class="val" id="aOut">0.015</span></label>
+    <div>
+      <div class="row">
+        <label class="row" style="gap:8px"><span class="lab">Velikost kroku jader</span>
+          <input type="range" id="alpha" min="0.005" max="0.06" step="0.005" value="0.015" style="width:120px">
+          <span class="val" id="aOut">0.015</span> <span class="lab">Å²/eV</span></label>
+      </div>
+      <p class="note" style="margin-top:4px">Určuje, jak daleko se jádra posunou ve 4. fázi: <span class="val">posun = krok · síla</span>. Malý krok znamená pomalou, ale spolehlivou relaxaci. Velký krok je rychlejší, ale jádra mohou minimum přeskočit a kmitat kolem něj. Ve VASPu podobnou roli hraje POTIM. <button class="link" id="moreStep">Více v teorii →</button></p>
     </div>
 
     <div class="panel">
@@ -426,6 +429,15 @@ DAV:   6    -6.80316    -0.00006   &lt;- menší než EDIFF, konec</pre>
         <li>Pokud jsou všechny síly <b>skoro nulové</b> (menší než |EDIFFG|, např. 0,02 eV/Å), jsou jádra v rovnováze a <b>konec</b>. VASP vypíše „reached required accuracy“.</li>
         <li>Jinak jádra <b>posuneš kousek ve směru síly</b>. Způsob vybírá IBRION: 1 = quasi-Newton (z historie odhaduje tvar energetické plochy), 2 = konjugované gradienty, 0 = molekulová dynamika (pohyb podle Newtonova zákona s časovým krokem POTIM).</li>
       </ul>
+      <h3 id="krok">Velikost kroku</h3>
+      <p>V nejjednodušší podobě (metoda největšího spádu) se každé jádro posune o</p>
+      <div class="f">Δr = α · F &nbsp;&nbsp;(α = velikost kroku, F = síla na jádro)</div>
+      <p>Konstanta α říká, <b>o kolik ångströmů se jádro posune na každý eV/Å síly</b>, proto má jednotku Å²/eV. V animaci ji nastavuješ posuvníkem „Velikost kroku jader“. U H₂ se posunou obě jádra proti sobě, takže se vzdálenost změní o 2·α·F.</p>
+      <ul>
+        <li><b>Malý krok:</b> jádra se k minimu blíží pomalu, ale jistě. Potřeba je víc iontových kroků, tedy víc SCF výpočtů.</li>
+        <li><b>Velký krok:</b> jádra se k minimu dostanou rychleji, ale mohou ho <b>přeskočit</b>. Síla pak míří opačně, jádra se vrátí, znovu přestřelí a kmitají kolem rovnováhy. Při příliš velkém kroku se relaxace může i rozjet.</li>
+      </ul>
+      <p>Ve VASPu tuto roli hraje parametr <b>POTIM</b>. U IBRION = 1 a 2 je to škálovací konstanta, kterou se násobí síly (výchozí hodnota 0,5). Quasi-Newton a konjugované gradienty si ale skutečnou délku kroku dál upravují podle historie energie a sil, takže se nepohybují tak „naslepo“ jako jednoduchý vzorec výše. U IBRION = 0 (molekulová dynamika) znamená POTIM časový krok ve femtosekundách.</p>
       <p>Nové polohy jdou <b>zpět na krok 2</b>: spočítá se nový potenciál jader a jako první odhad oblaku se vezme ten z minulého kroku. Ten je skoro správně, a proto je další SCF kratší. Aktuální struktura se průběžně zapisuje do CONTCARu.</p>
     </div>
 
@@ -568,7 +580,7 @@ function forces(){const g=Gof(d),rep=K/(d*d),pull=g+rep;cur.g=g;cur.rep=rep;cur.
 function move(){const al=parseFloat($('alpha').value),g=cur.g;const dn=Math.max(0.5,Math.min(1.9,d-2*al*g));
   hist.push({i:ion,d,E:cur.E,n:cur.n,F:Math.abs(g)});lastE=cur.E;
   $('explain').innerHTML=`<h2>4. Posun jader</h2>
-  <p>Každé jádro se posune kousek ve směru své síly: <span class="val">nová poloha = stará + krok · síla</span>.</p>
+  <p>Každé jádro se posune kousek ve směru své síly: <span class="val">nová poloha = stará + krok · síla</span>. Krok nastavuješ posuvníkem „Velikost kroku jader“ níže.</p>
   <p>Vzdálenost se změní z ${f3(d)} Å na <b>${f3(dn)} Å</b>. Oblak zůstane z minulého kroku jako první odhad pro další SCF.</p>
   <p class="note">Ve VASPu algoritmus posunu vybírá IBRION (1 = quasi-Newton, 2 = konjugované gradienty).</p>`;
   d=dn;ion++;phase=0;scf=null;justMoved=true;lines.push(` --- iontový krok ${ion}: d = ${f3(d)} A ---`,'');render();}
@@ -657,7 +669,7 @@ function showView(v){$('viewA').hidden=v!=='A';$('viewT').hidden=v!=='T';
 function openTheory(id){showView('T');const el=$(id);if(el)el.scrollIntoView({block:'start'});}
 
 $('tabA').onclick=()=>showView('A');$('tabT').onclick=()=>showView('T');$('backA').onclick=()=>showView('A');
-$('more').onclick=()=>openTheory(theoryTarget());
+$('more').onclick=()=>openTheory(theoryTarget());$('moreStep').onclick=()=>openTheory('krok');
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const el=$(b.dataset.go);if(el)el.scrollIntoView({block:'start',behavior:'smooth'});});
 $('next').onclick=next;$('ff').onclick=fastForward;$('reset').onclick=reset;$('alpha').oninput=render;$('npw').oninput=render;
 window.addEventListener('resize',render);
